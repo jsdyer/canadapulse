@@ -1,34 +1,12 @@
-<!doctype html>
-<html lang="en-CA">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="{{DESCRIPTION}}">
-  <title>{{TITLE}} · CoolCode</title>
-  <link rel="stylesheet" href="./style.css">
-  <script type="module" src="./app.mjs"></script>
-  {{VISIT_COUNTER}}
-</head>
-<body data-tool-id="{{TOOL_ID}}">
-  <a class="skip" href="#main">Skip to content</a>
-  <header><a href="https://coolcode.ca/">← CoolCode.ca</a><a href="{{SOURCE_URL}}">Source &amp; instructions ↗</a></header>
-  <main id="main">
-    <p class="eyebrow">Browser tool starter</p>
-    <h1>{{TITLE}}</h1>
-    <p class="intro">{{DESCRIPTION}}</p>
-    <section aria-labelledby="example-title">
-      <h2 id="example-title">Clean a list</h2>
-      <p>Trim spaces, skip blank lines and remove exact duplicates. Capitalization stays distinct.</p>
-      <div class="panels">
-        <div><label for="input">Your lines</label><textarea id="input" rows="10" maxlength="100000" spellcheck="false" placeholder="Paste one item per line"></textarea></div>
-        <div><label for="output">Cleaned lines</label><textarea id="output" rows="10" readonly spellcheck="false"></textarea></div>
-      </div>
-      <div class="actions"><button id="sample" type="button">Load example</button><button id="clear" type="button">Clear</button><button id="copy" type="button" hidden>Copy result</button></div>
-      <p id="status" role="status" aria-live="polite">Paste a list to begin.</p>
-      <noscript><p>This tool needs JavaScript to process your text. The source is available above.</p></noscript>
-    </section>
-    <aside aria-label="Privacy"><strong>Stays on your device.</strong> The browser processes your text in this tab. Reloading clears it.</aside>
-  </main>
-  <footer>Part of <a href="https://coolcode.ca/">the CoolCode collection</a>. {{ISSUE_LINK}}</footer>
-</body>
-</html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>What Canada Is Reading on Wikipedia · CoolCode</title><meta name="description" content="{{DESCRIPTION}}"><link rel="stylesheet" href="./style.css">{{VISIT_COUNTER}}<script type="module" src="./app.mjs"></script></head>
+<body data-tool-id="{{TOOL_ID}}"><header class="top"><a href="https://coolcode.ca/">CoolCode</a><span>Public knowledge, in motion</span><a href="{{SOURCE_URL}}">Source code</a></header>
+<main><section class="hero"><div><p class="eyebrow">A daily reading observatory</p><h1>{{TITLE}}</h1><p class="lede">What catches Canada's attention?</p><p>Explore the articles read from Canada, or follow worldwide interest in Canadian places, people and ideas.</p></div><div class="pulse" aria-hidden="true"><svg viewBox="0 0 300 120"><path d="M0 75H45L60 52L78 92L100 15L123 103L145 65H181L193 42L215 80L235 61H300"/></svg><span>READ · COMPARE · DISCOVER</span></div></section>
+<p id="status" role="status" class="status">Loading the latest verified snapshot…</p>
+<nav class="tabs" aria-label="Reading measure"><button id="country-tab" aria-pressed="true">Read from Canada</button><button id="topics-tab" aria-pressed="false">Canadian topics worldwide</button></nav>
+<section class="workspace"><div class="filters"><label>Report date<select id="date"></select></label><label class="grow">Find an article<input id="search" type="search" placeholder="Search titles…" maxlength="200"></label><label><span id="filter-label">Language</span><select id="filter"></select></label><label id="sort-wrap" hidden>Sort by<select id="sort"><option value="ratio">Rise against baseline</option><option value="views">Most views</option><option value="change">Largest view increase</option></select></label></div>
+<div class="toolbar"><label class="check"><input id="saved-only" type="checkbox"> Followed articles only</label><span id="result-count"></span><button id="export" class="secondary">Export CSV</button></div>
+<p id="measure" class="explanation"></p><div id="results" class="results" aria-live="polite"></div><button id="more" class="secondary" hidden>Show more articles</button></section>
+<section class="lower"><div class="panel"><p class="eyebrow">Follow your curiosity</p><h2>Track another article</h2><p>Look up a Wikipedia article's worldwide daily views. The article title and language are sent to Wikimedia when you search.</p><form id="lookup"><label>Article title<input id="article" required maxlength="200" placeholder="e.g. Chebucto Community Net"></label><label>Wikipedia language<input id="language" value="en" maxlength="20" pattern="[a-z][a-z0-9-]*" required></label><button>Look up article</button></form><p id="lookup-status" role="status"></p><div id="lookup-result"></div></div>
+<div class="panel"><h2>Read the numbers carefully</h2><p><strong>Read from Canada</strong> ranks article views originating in Canada, across Wikipedia languages. Country counts are privacy-protected upper bounds, not exact readership or unique people. A missing article is not zero views.</p><p><strong>Canadian topics worldwide</strong> measures global human/user pageviews for a curated, expandable topic list. A rise compares the chosen day with the preceding 28 days where available. It does not explain the cause.</p><p>Reporting days use UTC. This is a dated daily snapshot, not a live news feed. Article names and topics are community maintained.</p><p><a href="https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/reference/page-views.html">Wikimedia data documentation</a> · <a href="./data/snapshot.json">Download published snapshot</a></p></div></section>
+<section class="privacy"><h2>Your reading list stays here</h2><p>Following an article saves its title and language in this browser. Search filters stay in memory. Custom lookups contact Wikimedia; opening an article visits Wikipedia. No account is needed.</p><div id="followed-links"></div><button id="clear-saved" class="secondary">Clear followed articles</button></section>
+</main><footer><a href="https://coolcode.ca/">More CoolCode tools</a>{{ISSUE_LINK}}<span>Pageviews: Wikimedia Analytics · Article content: Wikipedia contributors</span></footer></body></html>

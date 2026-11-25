@@ -1,16 +1,22 @@
 {
-  "id": "coolcode-tool-template",
-  "title": "CoolCode Tool Starter",
-  "description": "A browser-only example that trims lines and removes exact duplicates.",
-  "category": "security",
-  "tags": ["text", "lines", "duplicates"],
-  "icon": "scan-search",
-  "url": "/coolcode-tool-template/",
-  "source": "https://github.com/jsdyer/coolcode-tool-template",
+  "id": "canadapulse",
+  "title": "Canada Pulse",
+  "description": "Explore Wikipedia reading trends in Canada and worldwide interest in Canadian topics.",
+  "category": "media",
+  "tags": [
+    "Wikipedia",
+    "pageviews",
+    "Canada",
+    "reading",
+    "trends"
+  ],
+  "icon": "chart-no-axes-combined",
+  "url": "/canadapulse/",
+  "source": "https://github.com/jsdyer/canadapulse",
   "hosting": "project",
   "access": "browser",
   "data_info": {
-    "mode": "local",
-    "detail": "The browser reads the text you paste and compares its lines."
+    "mode": "snapshot",
+    "detail": "Wikimedia daily Canadian readership rankings and worldwide user pageviews for a configurable Canadian-topic list. Daily scheduled checks."
   }
 }

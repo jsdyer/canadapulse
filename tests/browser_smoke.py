@@ -29,22 +29,34 @@ def main():
                 errors = []
                 page.on("pageerror", lambda error: errors.append(str(error)))
                 page.goto(f"http://127.0.0.1:{server.server_port}/example-tool/")
-                page.locator("#sample").click()
-                assert page.locator("#output").input_value() == "Halifax\nLangley\nVancouver"
-                assert "1 duplicate removed" in page.locator("#status").inner_text()
-                page.locator("#input").fill('<img src=x onerror="alert(1)">\n<img src=x onerror="alert(1)">')
-                assert page.locator("#output").input_value() == '<img src=x onerror="alert(1)">'
-                assert page.locator("img").count() == 0
-                page.locator("#clear").click()
-                assert page.locator("#output").input_value() == ""
-                page.locator("#sample").click()
+                page.locator("#results .card").first.wait_for()
+                assert "Report date" in page.locator("#status").inner_text()
+                page.locator("#results .follow").first.click()
+                page.reload()
+                page.locator("#results .card").first.wait_for()
+                page.locator("#saved-only").check()
+                assert page.locator("#results .card").count() == 1
+                page.locator("#saved-only").uncheck()
+                page.locator("#topics-tab").click()
+                page.locator("#search").fill("Halifax")
+                assert page.locator("#results .card").count() >= 1
+                assert "worldwide views" in page.locator("#results").inner_text()
+                with page.expect_download() as download:
+                    page.locator("#export").click()
+                assert download.value.suggested_filename.endswith(".csv")
+                page.locator("#search").fill('<img src=x onerror="alert(1)">')
+                assert page.locator("#results img").count() == 0
+                assert "No articles match" in page.locator("#results").inner_text()
+                page.locator("#search").fill("")
+                page.locator("#clear-saved").click()
+                assert page.locator("#followed-links a").count() == 0
                 page.screenshot(path=str(screenshots / "desktop.png"), full_page=True)
                 page.set_viewport_size({"width": 390, "height": 844})
                 assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
                 page.screenshot(path=str(screenshots / "mobile.png"), full_page=True)
                 assert not errors, errors
                 browser.close()
-            print("Browser checks passed: project subpath, sample, clear, safe text and mobile layout")
+            print("Browser checks passed: subpath, data, modes, follows, CSV, safe text and mobile layout")
         finally:
             server.shutdown()
 

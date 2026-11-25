@@ -1,21 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { cleanLines } from '../web/model.mjs';
-test('trims, removes blanks and preserves first-seen order', () => {
-  assert.deepEqual(cleanLines('  Halifax\nLangley\nHalifax\n\nVancouver  '), {
-    text: 'Halifax\nLangley\nVancouver', count: 3, removed: 1,
-  });
-});
-test('supports Windows and old Mac line endings', () => {
-  assert.equal(cleanLines('a\r\nb\ra').text, 'a\nb');
-});
-test('empty text and whitespace produce an empty result', () => {
-  assert.deepEqual(cleanLines(' \n\t'), { text: '', count: 0, removed: 0 });
-});
-test('preserves case and Unicode', () => {
-  assert.equal(cleanLines('Québec\nquébec\n東京\nQuébec').text, 'Québec\nquébec\n東京');
-});
-test('treats markup as ordinary text', () => {
-  assert.equal(cleanLines('<script>alert(1)</script>\n<script>alert(1)</script>').text, '<script>alert(1)</script>');
-});
-test('rejects non-text input', () => { assert.throws(() => cleanLines(null), TypeError); });
+import {articleURL,topicMetrics,countryRows,topicRows,csv,sparkPoints} from '../web/model.mjs';
+const history=Array.from({length:8},(_,i)=>({date:`2026-01-0${i+1}`,views:i===7?80:10}));
+test('baseline excludes chosen day and future observations',()=>{const m=topicMetrics({history},'2026-01-08',7);assert.equal(m.average,10);assert.equal(m.ratio,8);assert.equal(topicMetrics({history},'2026-01-07',7).ratio,null);});
+test('missing date stays missing and zero baseline has no infinite ratio',()=>{assert.equal(topicMetrics({history},'2026-02-01').views,null);assert.equal(topicMetrics({history:history.map(p=>({...p,views:0}))},'2026-01-08').ratio,null);});
+test('country ranks are compared only when present; upper bounds unchanged',()=>{const d={country_days:[{date:'2026-01-02',articles:[{title:'A',project:'en.wikipedia',rank:2,views_ceil:100}]},{date:'2026-01-01',articles:[]}]};const row=countryRows(d,'2026-01-02')[0];assert.equal(row.previousRank,null);assert.equal(row.views_ceil,100);assert.deepEqual(countryRows(d,'2026-01-02','','fr.wikipedia'),[]);});
+test('arbitrary new configured groups are included',()=>{const d={topics:[{title:'New place',project:'en.wikipedia',group:'New group',history}],baseline_days:7};assert.equal(topicRows(d,'2026-01-08','','New group').length,1);});
+test('URLs reject hostile project and encode path content',()=>{assert.throws(()=>articleURL('a','evil.example'));assert.equal(new URL(articleURL('A?x=<script>')).hostname,'en.wikipedia.org');assert.ok(articleURL('A/B').includes('%2F'));});
+test('CSV quotes content and neutralizes formula text',()=>{const out=csv([{title:'=1+1',project:'en.wikipedia',date:'2026-01-01',rank:1,views_ceil:9}],true);assert.ok(out.includes('"\'=1+1"'));assert.ok(out.includes('View upper bound'));});
+test('empty and zero sparklines are finite',()=>{assert.equal(sparkPoints([]),'');assert.ok(!sparkPoints([{views:0}]).includes('NaN'));});

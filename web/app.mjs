@@ -1,37 +1,25 @@
-import { cleanLines } from './model.mjs';
-const input = document.querySelector('#input');
-const output = document.querySelector('#output');
-const status = document.querySelector('#status');
-const copy = document.querySelector('#copy');
-function update() {
-  const result = cleanLines(input.value);
-  output.value = result.text;
-  status.textContent = `${result.count} unique ${result.count === 1 ? 'line' : 'lines'}; ${result.removed} ${result.removed === 1 ? 'duplicate' : 'duplicates'} removed.`;
-  copy.disabled = result.count === 0;
+import {articleURL,articleKey,topicMetrics,countryRows,topicRows,csv,sparkPoints} from './model.mjs';
+const $=s=>document.querySelector(s), NS='coolcode:canadapulse:followed';
+const state={mode:'country',snapshot:null,rows:[],limit:24,saved:new Set()};
+try {const saved=JSON.parse(localStorage.getItem(NS)||'[]');if(Array.isArray(saved))state.saved=new Set(saved.filter(x=>typeof x==='string').slice(0,300));}catch{}
+const number=n=>Math.round(n).toLocaleString();
+function el(tag,text,cls){const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;}
+function option(value,label){const o=el('option',label);o.value=value;return o;}
+function showFollowed(){const box=$('#followed-links');box.replaceChildren();for(const key of state.saved){const split=key.indexOf('|'),project=key.slice(0,split),title=key.slice(split+1);try{const p=el('p'),a=el('a',`${title} (${project.split('.')[0]})`);a.href=articleURL(title,project);a.rel='noopener noreferrer';a.target='_blank';const b=el('button','Check views','secondary');b.type='button';b.style.marginLeft='1rem';b.onclick=()=>{$('#article').value=title;$('#language').value=project.split('.')[0];$('#lookup').requestSubmit();$('#lookup').scrollIntoView({block:'center'});};p.append(a,b);box.append(p);}catch{}}}
+function save(){showFollowed();try{localStorage.setItem(NS,JSON.stringify([...state.saved]));}catch{$('#status').textContent='Browser storage is unavailable. Followed articles will last only for this visit.';}}
+function follow(row){const b=el('button','', 'follow');b.type='button';const key=articleKey(row);function paint(){const on=state.saved.has(key);b.textContent=on?'Following':'Follow article';b.setAttribute('aria-pressed',String(on));}paint();b.onclick=()=>{if(state.saved.has(key))state.saved.delete(key);else state.saved.add(key);save();paint();if($('#saved-only').checked)render();};return b;}
+function card(row,country){const article=el('article',undefined,'card'),meta=el('p',country?`${row.project.split('.')[0].toUpperCase()} Wikipedia · source rank ${row.rank}`:`${row.group||'Your lookup'} · ${row.project.split('.')[0].toUpperCase()} Wikipedia`,'meta');article.append(meta);const h=el('h3'),a=el('a',row.title);a.href=articleURL(row.title,row.project);a.target='_blank';a.rel='noopener noreferrer';h.append(a);article.append(h);const metric=el('div',undefined,'metric');metric.append(el('span',country?`≤ ${number(row.views_ceil)}`:number(row.views)));metric.append(el('small',country?' view upper bound':' worldwide views'));article.append(metric);
+  if(country){let text=row.previousRank===null?'Not present in the previous saved ranking.':row.previousRank===row.rank?'Same source rank as the previous saved date.':`${row.previousRank>row.rank?'Up':'Down'} ${Math.abs(row.previousRank-row.rank)} source ranks since ${row.rankDate}.`;article.append(el('p',text,'detail'));}
+  else {const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.classList.add('spark');svg.setAttribute('viewBox','0 0 300 58');svg.setAttribute('role','img');svg.setAttribute('aria-label',`Daily pageviews from ${row.history[0]?.date} through ${row.history.at(-1)?.date}`);const poly=document.createElementNS(svg.namespaceURI,'polyline');poly.setAttribute('points',sparkPoints(row.history));svg.append(poly);article.append(svg);article.append(el('p',row.ratio===null?'Not enough baseline data for a meaningful ratio.':`${row.ratio.toFixed(2)}× the previous ${row.baselineCount}-day mean (${number(row.average)} views/day).`,'detail'));}
+  article.append(follow(row));return article;
 }
-input.addEventListener('input', update);
-document.querySelector('#sample').addEventListener('click', () => {
-  input.value = '  Halifax\nLangley\nHalifax\n\nVancouver  ';
-  update();
-});
-document.querySelector('#clear').addEventListener('click', () => {
-  input.value = '';
-  update();
-  input.focus();
-});
-if (navigator.clipboard && window.isSecureContext) {
-  copy.hidden = false;
-  copy.disabled = true;
-  copy.addEventListener('click', async () => {
-    try {
-      await navigator.clipboard.writeText(output.value);
-      status.textContent = 'Result copied.';
-    } catch {
-      output.focus();
-      output.select();
-      status.textContent = 'Copy was unavailable. The result is selected so you can copy it manually.';
-    }
-  });
-}
-// Namespace future preference storage as coolcode:<tool-id>:<key>.
-// Do not persist pasted text or uploads by default.
+function setFilters(){const country=state.mode==='country';$('#country-tab').setAttribute('aria-pressed',String(country));$('#topics-tab').setAttribute('aria-pressed',String(!country));$('#sort-wrap').hidden=country;$('#filter-label').textContent=country?'Language':'Topic group';const values=country?[...new Set(state.snapshot.country_days.flatMap(d=>d.articles.map(a=>a.project)))].sort():[...new Set(state.snapshot.topics.map(t=>t.group))].sort();$('#filter').replaceChildren(option('all',country?'All languages':'All topic groups'),...values.map(v=>option(v,country?v.split('.')[0].toUpperCase():v)));$('#measure').textContent=country?'Articles read from Canada. Counts are privacy-protected upper bounds; ranks retain Wikimedia’s source ordering after utility pages are removed.':'Worldwide user views for an expandable list of Canadian topics. Ratios use the preceding days, excluding the selected day. English and French articles are measured separately.';state.limit=24;render();}
+function render(){if(!state.snapshot)return;const date=$('#date').value,query=$('#search').value,filter=$('#filter').value,saved=$('#saved-only').checked?state.saved:null;state.rows=state.mode==='country'?countryRows(state.snapshot,date,query,filter,saved):topicRows(state.snapshot,date,query,filter,$('#sort').value,saved);const rows=state.rows.slice(0,state.limit);$('#results').replaceChildren(...rows.map(row=>card(row,state.mode==='country')));if(!rows.length)$('#results').append(el('p','No articles match these filters. Try another date, broader search, or turn off the followed-only filter.','empty'));$('#result-count').textContent=`${state.rows.length} articles · ${date}`;$('#more').hidden=state.rows.length<=state.limit;$('#export').disabled=!state.rows.length;}
+for(const id of ['search','filter','sort','date','saved-only'])$('#'+id).addEventListener(id==='search'?'input':'change',()=>{state.limit=24;render();});
+$('#country-tab').onclick=()=>{state.mode='country';setFilters();};$('#topics-tab').onclick=()=>{state.mode='topics';setFilters();};$('#more').onclick=()=>{state.limit+=24;render();};
+$('#clear-saved').onclick=()=>{state.saved.clear();save();render();$('#lookup-result').replaceChildren();};
+$('#export').onclick=()=>{const data=csv(state.rows.map(r=>({...r,date:$('#date').value})),state.mode==='country'),url=URL.createObjectURL(new Blob([data],{type:'text/csv;charset=utf-8'}));const a=el('a');a.href=url;a.download=`canadapulse-${state.mode}-${$('#date').value}.csv`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+$('#lookup').onsubmit=async event=>{event.preventDefault();const title=$('#article').value.trim(),language=$('#language').value.trim().toLowerCase();if(!title||!/^[a-z][a-z0-9-]{0,20}$/.test(language))return;const button=$('#lookup button');button.disabled=true;$('#lookup-status').textContent='Checking worldwide daily pageviews…';$('#lookup-result').replaceChildren();try{const end=state.snapshot.report_date,start=new Date(end+'T00:00:00Z');start.setUTCDate(start.getUTCDate()-28);const format=s=>s.replaceAll('-','')+'00';const project=language+'.wikipedia',url=`https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/${project}/all-access/user/${encodeURIComponent(title.replaceAll(' ','_'))}/daily/${format(start.toISOString().slice(0,10))}/${format(end)}`;const response=await fetch(url,{signal:AbortSignal.timeout(20000)});if(!response.ok)throw new Error(response.status===404?'No pageview series found. Use the exact Wikipedia article title.':`Wikimedia returned ${response.status}. Please try later.`);const data=await response.json();if(!Array.isArray(data.items)||data.items.length>100)throw new Error('Unexpected response.');const history=data.items.map(p=>{const s=String(p.timestamp);if(!/^\d{10}$/.test(s)||!Number.isSafeInteger(p.views)||p.views<0)throw new Error('Invalid source count.');return{date:`${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`,views:p.views};});const row=topicMetrics({title,project,group:'Your lookup',history},end,28);if(row.views===null)throw new Error('The selected reporting day is not available.');$('#lookup-result').append(card(row,false));$('#lookup-status').textContent=`Worldwide views through ${end}. This custom lookup is not part of the published Canadian-topic catalogue.`;}catch(error){$('#lookup-status').textContent=error.message||'The lookup could not be completed.';}finally{button.disabled=false;}};
+try{const response=await fetch('./data/snapshot.json');if(!response.ok)throw new Error('Published data is unavailable.');state.snapshot=await response.json();if(state.snapshot.schema_version!==1||!state.snapshot.country_days?.length||!state.snapshot.topics?.length)throw new Error('The published snapshot is not valid.');$('#date').replaceChildren(...state.snapshot.country_days.map(d=>option(d.date,d.date)));$('#date').value=state.snapshot.report_date;const age=Math.floor((Date.now()-Date.parse(state.snapshot.report_date+'T00:00:00Z'))/86400000);$('#status').textContent=`Report date ${state.snapshot.report_date} (UTC) · ${state.snapshot.topics.length} Canadian topics · checked ${new Date(state.snapshot.retrieved_at).toLocaleString()}${age>4?' · This snapshot is older than expected; its original dates are retained.':''}`;setFilters();}catch(error){$('#status').textContent=error.message+' Please try again later; no live data has been substituted.';$('#export').disabled=true;$('#lookup button').disabled=true;}
+
+showFollowed();
