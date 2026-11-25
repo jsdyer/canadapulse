@@ -22,3 +22,10 @@ class RefreshTests(unittest.TestCase):
  def test_bad_project_rejected(self):
   config={'country':'CA','history_days':2,'baseline_days':7,'country_limit':20,'topics':[{'title':'A','project':'evil.example','group':'A'}]}
   with self.assertRaises(ValueError):valid_config(config)
+
+ def test_utility_projects_are_not_readership_languages(self):
+  articles=[{'article':f'Article_{i}','project':'en.wikipedia','rank':i+2,'views_ceil':100} for i in range(12)]
+  articles.insert(0,{'article':'Thank_you','project':'thankyou.wikipedia','rank':1,'views_ceil':999})
+  raw={'items':[{'country':'CA','year':'2026','month':'01','day':'02','articles':articles}]}
+  rows=parse_country(raw,date(2026,1,2),20)['articles']
+  self.assertEqual(len(rows),12);self.assertEqual(rows[0]['rank'],2)

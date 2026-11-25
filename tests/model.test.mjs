@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {articleURL,topicMetrics,countryRows,topicRows,csv,sparkPoints} from '../web/model.mjs';
+import {isLanguageProject,articleURL,topicMetrics,countryRows,topicRows,csv,sparkPoints} from '../web/model.mjs';
 const history=Array.from({length:8},(_,i)=>({date:`2026-01-0${i+1}`,views:i===7?80:10}));
 test('baseline excludes chosen day and future observations',()=>{const m=topicMetrics({history},'2026-01-08',7);assert.equal(m.average,10);assert.equal(m.ratio,8);assert.equal(topicMetrics({history},'2026-01-07',7).ratio,null);});
 test('missing date stays missing and zero baseline has no infinite ratio',()=>{assert.equal(topicMetrics({history},'2026-02-01').views,null);assert.equal(topicMetrics({history:history.map(p=>({...p,views:0}))},'2026-01-08').ratio,null);});
@@ -9,3 +9,11 @@ test('arbitrary new configured groups are included',()=>{const d={topics:[{title
 test('URLs reject hostile project and encode path content',()=>{assert.throws(()=>articleURL('a','evil.example'));assert.equal(new URL(articleURL('A?x=<script>')).hostname,'en.wikipedia.org');assert.ok(articleURL('A/B').includes('%2F'));});
 test('CSV quotes content and neutralizes formula text',()=>{const out=csv([{title:'=1+1',project:'en.wikipedia',date:'2026-01-01',rank:1,views_ceil:9}],true);assert.ok(out.includes('"\'=1+1"'));assert.ok(out.includes('View upper bound'));});
 test('empty and zero sparklines are finite',()=>{assert.equal(sparkPoints([]),'');assert.ok(!sparkPoints([{views:0}]).includes('NaN'));});
+
+test('country display excludes utility projects without mutating saved source data',()=>{
+ const articles=[{title:'Thanks',project:'thankyou.wikipedia',rank:1,views_ceil:100},{title:'Canada',project:'en.wikipedia',rank:4,views_ceil:80}];
+ const data={country_days:[{date:'2026-01-01',articles}]};
+ assert.deepEqual(countryRows(data,'2026-01-01').map(r=>r.rank),[4]);assert.equal(data.country_days[0].articles.length,2);
+ assert.equal(isLanguageProject('simple.wikipedia'),true);assert.equal(isLanguageProject('zh-min-nan.wikipedia'),true);
+ assert.equal(isLanguageProject('www.wikipedia'),false);assert.equal(isLanguageProject('thankyou.wikipedia'),false);
+});

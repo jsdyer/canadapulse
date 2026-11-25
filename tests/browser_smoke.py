@@ -34,7 +34,9 @@ def main():
                 page.goto(f"http://127.0.0.1:{server.server_port}/example-tool/")
                 page.locator("#results .card").first.wait_for()
                 page.wait_for_function("document.querySelector('#history-status').textContent.startsWith('Viewing ')")
-                assert "Report date" in page.locator("#status").inner_text()
+                assert "Latest report date" in page.locator("#status").inner_text()
+                assert "THANKYOU" not in page.locator("#filter").inner_text()
+                assert page.locator("#search").bounding_box()["width"] >= 220
                 page.locator("#results .follow").first.click()
                 page.reload()
                 page.locator("#results .card").first.wait_for()

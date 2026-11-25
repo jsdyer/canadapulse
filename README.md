@@ -12,7 +12,7 @@
 - A growing historical archive, month/date selection, shareable date links, sparklines and CSV export. The recent collection window defaults to fourteen country dates and 28-day topic baselines; archived dates do not roll off.
 - Follow articles in browser storage, including custom lookups, and check their worldwide views through the selected reporting date.
 - Arbitrary Wikipedia article title/language lookup directly against Wikimedia. No API key or Worker handler is required.
-- Keyboard navigation, mobile layout and source links. Utility pages are filtered, with the remaining original source ranks retained.
+- Keyboard navigation, mobile layout and source links. Utility pages and non-language utility projects such as `thankyou.wikipedia` are filtered from the display and future collection, with the remaining original source ranks retained. Original first-observed archive files are preserved.
 
 The report date is the measured UTC date. `retrieved_at` is when the collector retrieved the data. Neither is a page-build date. Country values use Wikimedia's `views_ceil` field; a missing article is not zero. Worldwide series use the `user` agent class and measure views, not unique people. Canadian topics are editorially selected and are not a complete classification of all Canadian subjects.
 

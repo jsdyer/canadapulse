@@ -15,7 +15,7 @@ from history import publish_snapshot
 ROOT = Path(__file__).resolve().parents[1]
 API = "https://wikimedia.org/api/rest_v1/metrics/pageviews"
 UA = "CanadaPulse/1.0 (https://coolcode.ca/canadapulse/; https://github.com/jsdyer/canadapulse)"
-PROJECT = re.compile(r"[a-z][a-z0-9-]{0,20}\.wikipedia")
+PROJECT = re.compile(r"(?:[a-z]{2,3}(?:-[a-z0-9]{1,12})*|simple)\.wikipedia")
 NAMESPACE = re.compile(r"^(Main_Page$|Wikipedia:|Wikipédia:|Special:|Spécial:|Portal:|Help:|File:|Category:|Template:|Talk:|User:)", re.I)
 
 
@@ -46,7 +46,7 @@ def valid_config(config):
         raise ValueError("Configure between 1 and 100 topics")
     seen = set()
     for topic in topics:
-        if not PROJECT.fullmatch(topic.get("project", "")) or not isinstance(topic.get("title"), str) or not 1 <= len(topic["title"]) <= 200:
+        if not PROJECT.fullmatch(topic.get("project", "")) or topic.get("project") == "www.wikipedia" or not isinstance(topic.get("title"), str) or not 1 <= len(topic["title"]) <= 200:
             raise ValueError("Invalid topic title or Wikipedia project")
         if not isinstance(topic.get("group"), str) or not topic["group"].strip():
             raise ValueError("Every topic needs a group")
@@ -66,7 +66,7 @@ def parse_country(raw, day, limit):
     for row in item.get("articles", []):
         title, project = row.get("article"), row.get("project", "")
         views, rank = row.get("views_ceil"), row.get("rank")
-        if not isinstance(title, str) or not PROJECT.fullmatch(project) or NAMESPACE.search(title):
+        if not isinstance(title, str) or not PROJECT.fullmatch(project) or project == "www.wikipedia" or NAMESPACE.search(title):
             continue
         if type(views) is not int or views < 0 or type(rank) is not int or rank < 1:
             raise ValueError("Invalid country view count")
