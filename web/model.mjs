@@ -6,10 +6,12 @@ export function articleKey(row) { return `${row.project}|${row.title}`; }
 export function topicMetrics(topic, date, baselineDays = 28) {
   const history = topic.history.filter(p => p.date <= date).sort((a,b)=>a.date.localeCompare(b.date));
   const point = history.find(p => p.date === date);
-  const previous = history.filter(p => p.date < date).slice(-baselineDays);
+  const start=new Date(date+'T00:00:00Z');start.setUTCDate(start.getUTCDate()-baselineDays);
+  const first=start.toISOString().slice(0,10);
+  const previous = history.filter(p => p.date >= first && p.date < date);
   const average = previous.length ? previous.reduce((s,p)=>s+p.views,0)/previous.length : null;
-  return { ...topic, views: point?.views ?? null, average, baselineCount: previous.length,
-    ratio: point && average > 0 && previous.length >= 7 ? point.views/average : null,
+  return { ...topic, views: point?.views ?? null, average, baselineCount: previous.length, baselineDays,
+    ratio: point && average > 0 && previous.length === baselineDays ? point.views/average : null,
     change: point && average !== null ? point.views-average : null, history };
 }
 export function countryRows(snapshot, date, query = '', language = 'all', saved = null) {
@@ -32,8 +34,15 @@ export function csv(rows, country) {
   const header=country?['Article','Project','Date','View upper bound','Source rank']:['Article','Project','Date','Worldwide user views','Baseline mean','Baseline days','Ratio'];
   return [header,...rows.map(r=>country?[r.title,r.project,r.date,r.views_ceil,r.rank]:[r.title,r.project,r.date,r.views,r.average,r.baselineCount,r.ratio])].map(r=>r.map(quote).join(',')).join('\r\n');
 }
-export function sparkPoints(history, width=300, height=58) {
-  if(!history.length) return '';
+export function sparkSegments(history, width=300, height=58) {
+  if(!history.length) return [];
   const max=Math.max(1,...history.map(p=>p.views));
-  return history.map((p,i)=>`${(i/(Math.max(1,history.length-1))*width).toFixed(1)},${(height-4-p.views/max*(height-8)).toFixed(1)}`).join(' ');
+  const times=history.map((p,i)=>Number.isFinite(Date.parse(p.date+'T00:00:00Z'))?Date.parse(p.date+'T00:00:00Z'):i*86400000);
+  const span=Math.max(86400000,times.at(-1)-times[0]),segments=[];
+  for(let i=0;i<history.length;i++){
+    if(i===0||times[i]-times[i-1]!==86400000)segments.push([]);
+    segments.at(-1).push(`${((times[i]-times[0])/span*width).toFixed(1)},${(height-4-history[i].views/max*(height-8)).toFixed(1)}`);
+  }
+  return segments.map(points=>points.join(' '));
 }
+export function sparkPoints(history,width=300,height=58){return sparkSegments(history,width,height).join(' ');}

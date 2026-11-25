@@ -2,6 +2,7 @@
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+import json
 import shutil
 import tempfile
 import threading
@@ -16,6 +17,8 @@ class QuietHandler(SimpleHTTPRequestHandler):
 
 
 def main():
+    manifest = json.loads((ROOT / "dist/data/history/manifest.json").read_text())
+    earliest, latest = manifest["earliest_date"], manifest["latest_date"]
     screenshots = ROOT / "browser-checks"
     screenshots.mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory() as temporary:
@@ -30,13 +33,35 @@ def main():
                 page.on("pageerror", lambda error: errors.append(str(error)))
                 page.goto(f"http://127.0.0.1:{server.server_port}/example-tool/")
                 page.locator("#results .card").first.wait_for()
+                page.wait_for_function("document.querySelector('#history-status').textContent.startsWith('Viewing ')")
                 assert "Report date" in page.locator("#status").inner_text()
                 page.locator("#results .follow").first.click()
                 page.reload()
                 page.locator("#results .card").first.wait_for()
+                page.wait_for_function("document.querySelector('#history-status').textContent.startsWith('Viewing ')")
                 page.locator("#saved-only").check()
                 assert page.locator("#results .card").count() == 1
                 page.locator("#saved-only").uncheck()
+                page.locator("#topics-tab").click()
+                page.locator("#month").select_option(earliest[:7])
+                page.wait_for_function("!document.querySelector('#date').disabled")
+                page.locator("#date").select_option(earliest)
+                page.wait_for_function("value => document.querySelector('#result-count').textContent.includes(value)", arg=earliest)
+                assert "archived values" in page.locator("#history-status").inner_text()
+                assert "baseline is unavailable" in page.locator("#results").inner_text()
+                assert f"date={earliest}" in page.url
+                page.reload()
+                page.wait_for_function("value => document.querySelector('#result-count').textContent.includes(value)", arg=earliest)
+                assert page.locator("#topics-tab").get_attribute("aria-pressed") == "true"
+                page.locator("#country-tab").click()
+                first = next(d for m in manifest["months"] for d in m["dates"] if d["date"] == earliest)
+                if not first["country"]:
+                    assert "No Canadian-country ranking was archived" in page.locator("#history-status").inner_text()
+                    assert page.locator("#results .card").count() == 0
+                page.locator("#month").select_option(latest[:7])
+                page.wait_for_function("!document.querySelector('#date').disabled")
+                page.locator("#date").select_option(latest)
+                page.wait_for_function("value => document.querySelector('#result-count').textContent.includes(value)", arg=latest)
                 page.locator("#topics-tab").click()
                 page.locator("#search").fill("Halifax")
                 assert page.locator("#results .card").count() >= 1
@@ -56,7 +81,7 @@ def main():
                 page.screenshot(path=str(screenshots / "mobile.png"), full_page=True)
                 assert not errors, errors
                 browser.close()
-            print("Browser checks passed: subpath, data, modes, follows, CSV, safe text and mobile layout")
+            print("Browser checks passed: subpath, dated archive links, coverage gaps, modes, follows, CSV, safe text and mobile layout")
         finally:
             server.shutdown()
 

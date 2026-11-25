@@ -4,13 +4,13 @@ import argparse
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta, timezone
 import json
-import os
 from pathlib import Path
 import re
 import time
 from urllib.error import HTTPError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
+from history import publish_snapshot
 
 ROOT = Path(__file__).resolve().parents[1]
 API = "https://wikimedia.org/api/rest_v1/metrics/pageviews"
@@ -128,18 +128,13 @@ def collect(config, target=None):
             "source": {"name": "Wikimedia Analytics API", "url": "https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/reference/page-views.html", "country_measure": "views_ceil: privacy-protected upper bounds, not exact counts or people", "topic_measure": "Worldwide daily user pageviews for the selected article and language", "license": "CC0 1.0 for pageview data"}}
 
 
-def write_snapshot(data, output):
-    output.parent.mkdir(parents=True, exist_ok=True)
-    temporary = output.with_suffix(".tmp")
-    temporary.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
-    os.replace(temporary, output)
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--date", type=date.fromisoformat)
+    parser.add_argument("--archive-existing", action="store_true", help="Archive the verified checked-in snapshot without making source requests or advancing check dates")
     args = parser.parse_args()
-    result = collect(json.loads((ROOT / "config/sources.json").read_text()), args.date)
-    write_snapshot(result, ROOT / "web/data/snapshot.json")
-    write_snapshot({"schema_version": 1, "checked_at": result["retrieved_at"], "report_date": result["report_date"], "topics": len(result["topics"]), "country_days": len(result["country_days"])}, ROOT / "web/data/status.json")
-    print(f"Validated {len(result['country_days'])} Canadian rankings and {len(result['topics'])} complete topic histories; report date {result['report_date']}")
+    if args.archive_existing and args.date:
+        parser.error("Use either --archive-existing or --date")
+    result = json.loads((ROOT / "web/data/snapshot.json").read_text()) if args.archive_existing else collect(json.loads((ROOT / "config/sources.json").read_text()), args.date)
+    archive = publish_snapshot(result, ROOT / "web/data")
+    print(f"Validated {len(result['country_days'])} Canadian rankings and {len(result['topics'])} complete topic histories; report date {result['report_date']}; retained {archive['day_count']} archive dates in {len(archive['months'])} months")

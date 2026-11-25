@@ -8,6 +8,9 @@ on:
     - cron: '23 16 * * *'
 permissions:
   contents: read
+concurrency:
+  group: canadapulse-${{ github.event_name == 'pull_request' && github.ref || 'main' }}
+  cancel-in-progress: false
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -19,6 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && 'main' || github.ref }}
           persist-credentials: ${{ github.event_name != 'pull_request' }}
       - uses: actions/setup-python@v6
         with:
@@ -27,7 +31,7 @@ jobs:
         with:
           node-version: '24'
       - name: Collect complete Wikimedia daily rankings and article histories
-        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
         run: python3 scripts/refresh.py
       - name: Test the application
         run: node --test tests/*.test.mjs
@@ -53,14 +57,14 @@ jobs:
           python3 -m playwright install --with-deps chromium
       - name: Check application in a browser
         run: python3 tests/browser_smoke.py
-      - name: Commit validated pageview snapshot
-        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+      - name: Commit validated pageviews and durable history
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
         run: |
           git add web/data
           if ! git diff --cached --quiet; then
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git commit -m 'data: refresh verified Wikimedia pageview snapshot'
+            git commit -m 'data: retain verified Wikimedia pageviews and history'
             git push origin HEAD:main
           fi
       - name: Save browser screenshots
@@ -87,9 +91,6 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    concurrency:
-      group: github-pages
-      cancel-in-progress: false
     permissions:
       pages: write
       id-token: write
