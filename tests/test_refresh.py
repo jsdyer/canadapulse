@@ -1,10 +1,12 @@
-from datetime import date
+from datetime import date, timedelta
 import json
 from pathlib import Path
 import sys
 import unittest
+from unittest.mock import patch
+from urllib.error import HTTPError
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'scripts'))
-from refresh import parse_country,parse_series,valid_config
+from refresh import parse_country,parse_series,valid_config,collect
 class RefreshTests(unittest.TestCase):
  def test_country_identity_and_upper_bounds(self):
   raw={'items':[{'country':'CA','year':'2026','month':'01','day':'02','articles':[{'article':f'Article_{i}','project':'en.wikipedia','rank':i+1,'views_ceil':100+i} for i in range(12)]}]}
@@ -29,3 +31,15 @@ class RefreshTests(unittest.TestCase):
   raw={'items':[{'country':'CA','year':'2026','month':'01','day':'02','articles':articles}]}
   rows=parse_country(raw,date(2026,1,2),20)['articles']
   self.assertEqual(len(rows),12);self.assertEqual(rows[0]['rank'],2)
+
+class RecentSourceGapTests(unittest.TestCase):
+ def test_prior_country_404_is_recorded_without_fabricating_or_blocking_latest_day(self):
+  config={'country':'CA','history_days':2,'baseline_days':7,'country_limit':20,'topics':[{'title':'Halifax','project':'en.wikipedia','group':'Places'}]}
+  def fake(url):
+   if '/top-per-country/' in url:
+    if url.endswith('/2026/01/09'):raise HTTPError(url,404,'missing',{},None)
+    return {'items':[{'country':'CA','year':'2026','month':'01','day':'10','articles':[{'article':f'Article_{i}','project':'en.wikipedia','rank':i+1,'views_ceil':100} for i in range(20)]}]}
+   return {'items':[{'timestamp':(date(2026,1,2)+timedelta(days=i)).strftime('%Y%m%d')+'00','views':3} for i in range(9)]}
+  with patch('refresh.get_json',side_effect=fake):result=collect(config,date(2026,1,10))
+  self.assertEqual([d['date'] for d in result['country_days']],['2026-01-10'])
+  self.assertEqual(result['unavailable_country_dates'],['2026-01-09'])

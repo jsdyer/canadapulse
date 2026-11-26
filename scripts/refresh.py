@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Collect real Wikimedia daily data atomically; never manufacture a missing day."""
 import argparse
-from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime, timedelta, timezone
 import json
 from pathlib import Path
@@ -28,10 +27,14 @@ def get_json(url):
                 raise ValueError("Upstream JSON exceeded 8 MB")
             return json.loads(raw)
         except HTTPError as error:
+            if error.code == 429:
+                raise RuntimeError("Wikimedia rate limited this collection; stop and retry in a later run") from error
             if error.code not in (429, 500, 502, 503, 504) or attempt == 2:
                 raise
-            delay = error.headers.get("Retry-After", "2")
-            time.sleep(min(15, int(delay) if delay.isdecimal() else 2) * (attempt + 1))
+            delay = error.headers.get("Retry-After")
+            if delay:
+                raise RuntimeError("Wikimedia requested a pause; retry in a later run after Retry-After: " + delay) from error
+            time.sleep(5 * 2 ** attempt)
     raise RuntimeError("Request exhausted")
 
 
@@ -79,7 +82,7 @@ def parse_country(raw, day, limit):
     return {"date": day.isoformat(), "articles": output[:limit]}
 
 
-def parse_series(raw, start, end):
+def parse_series(raw, start, end, require_complete=True):
     values = {}
     for row in raw.get("items", []):
         stamp = str(row.get("timestamp", ""))
@@ -92,7 +95,7 @@ def parse_series(raw, start, end):
         if start <= day <= end:
             values[day] = views
     expected = (end - start).days + 1
-    if len(values) != expected:
+    if require_complete and len(values) != expected:
         raise ValueError(f"Incomplete article history: {len(values)}/{expected} days")
     return [{"date": d.isoformat(), "views": values[d]} for d in sorted(values)]
 
@@ -115,16 +118,21 @@ def collect(config, target=None):
     days = [target - timedelta(days=n) for n in range(1, config["history_days"])]
     def country(day):
         return parse_country(get_json(f"{API}/top-per-country/CA/all-access/{day:%Y/%m/%d}"), day, config["country_limit"])
-    with ThreadPoolExecutor(max_workers=3) as pool:
-        history = [latest, *pool.map(country, days)]
+    history, unavailable = [latest], []
+    for day in days:
+        try:
+            history.append(country(day))
+        except HTTPError as error:
+            if error.code != 404:
+                raise
+            unavailable.append(day.isoformat())
     start = target - timedelta(days=config["baseline_days"] + config["history_days"] - 1)
     def topic(item):
         title = quote(item["title"].replace(" ", "_"), safe="")
         url = f"{API}/per-article/{item['project']}/all-access/user/{title}/daily/{start:%Y%m%d}00/{target:%Y%m%d}00"
         return {**item, "history": parse_series(get_json(url), start, target), "source_url": url}
-    with ThreadPoolExecutor(max_workers=3) as pool:
-        topics = list(pool.map(topic, config["topics"]))
-    return {"schema_version": 1, "retrieved_at": datetime.now(timezone.utc).isoformat(), "report_date": target.isoformat(), "baseline_days": config["baseline_days"], "country": "CA", "country_days": history, "topics": topics,
+    topics = list(map(topic, config["topics"]))
+    return {"schema_version": 1, "retrieved_at": datetime.now(timezone.utc).isoformat(), "report_date": target.isoformat(), "baseline_days": config["baseline_days"], "country": "CA", "country_days": history, "unavailable_country_dates": unavailable, "topics": topics,
             "source": {"name": "Wikimedia Analytics API", "url": "https://doc.wikimedia.org/generated-data-platform/aqs/analytics-api/reference/page-views.html", "country_measure": "views_ceil: privacy-protected upper bounds, not exact counts or people", "topic_measure": "Worldwide daily user pageviews for the selected article and language", "license": "CC0 1.0 for pageview data"}}
 
 

@@ -32,7 +32,7 @@ export function archiveSnapshot(months,selected){
   const start=new Date(selected+'T00:00:00Z');start.setUTCDate(start.getUTCDate()-day.baseline_days);const first=start.toISOString().slice(0,10);
   const prior=days.filter(d=>d.date>=first&&d.date<=selected).sort((a,b)=>a.date.localeCompare(b.date));
   const topics=day.topics.map(topic=>({...topic,history:prior.flatMap(d=>{const match=d.topics.find(t=>articleKey(t)===articleKey(topic));return match?[{date:d.date,views:match.views}]:[];})}));
-  return {schema_version:1,country:'CA',report_date:selected,retrieved_at:day.first_saved_at,baseline_days:day.baseline_days,topics,
+  return {schema_version:1,country:'CA',report_date:selected,retrieved_at:day.topics_saved_at??day.first_saved_at,baseline_days:day.baseline_days,topics,
     country_days:days.filter(d=>d.country).map(d=>({date:d.date,articles:d.country.articles})).sort((a,b)=>b.date.localeCompare(a.date)),
-    archive_meta:{first_saved_at:day.first_saved_at,country_saved_at:day.country?.first_saved_at??null,has_country:!!day.country},source:months[0]?.source};
+    archive_meta:{first_saved_at:day.topics_saved_at??day.first_saved_at,country_saved_at:day.country?.first_saved_at??null,has_country:!!day.country},source:months[0]?.source};
 }

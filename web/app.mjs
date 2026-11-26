@@ -81,7 +81,8 @@ try{
     const allDates=manifest.months.flatMap(m=>m.dates.map(d=>d.date)),selected=allDates.includes(requested)?requested:manifest.latest_date;
     if(params.get('view')==='topics')state.mode='topics';
     $('#month').value=selected.slice(0,7);monthDates($('#month').value,selected);
-    $('#status').textContent+=` · ${manifest.day_count} archived dates since ${manifest.earliest_date}`;
+    const countryDates=manifest.months.flatMap(m=>m.dates.filter(d=>d.country).map(d=>d.date)).sort();
+    $('#status').textContent+=` · ${manifest.day_count} archived dates since ${manifest.earliest_date} · ${manifest.country_days} Canadian-reader rankings${countryDates.length?' since '+countryDates[0]:''}`;
     await selectHistoryDate(selected);
   }catch(error){$('#history-status').textContent=error.message+' The recent verified snapshot is still available.';}
 }catch(error){$('#status').textContent=error.message+' Please try again later; no live data has been substituted.';$('#export').disabled=true;$('#lookup button').disabled=true;$('#copy-date').disabled=true;}
