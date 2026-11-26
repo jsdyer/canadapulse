@@ -1,4 +1,8 @@
+import {UTILITY_PAGES} from './utility-pages.mjs';
 export function isLanguageProject(project){return typeof project==='string'&&/^(?:[a-z]{2,3}(?:-[a-z0-9]{1,12})*|simple)\.wikipedia$/.test(project)&&project!=='www.wikipedia';}
+const utilityKey=(project,title)=>`${project}|${title.replaceAll('_',' ').normalize('NFC')}`;
+const utilityPages=new Set(UTILITY_PAGES.map(row=>utilityKey(row.project,row.title)));
+export function isCountryArticle(row){return isLanguageProject(row?.project)&&typeof row?.title==='string'&&!utilityPages.has(utilityKey(row.project,row.title));}
 export function articleURL(title, project = 'en.wikipedia') {
   if (!isLanguageProject(project)) throw new Error('Unsupported Wikipedia language');
   return `https://${project}.org/wiki/${encodeURIComponent(title.replaceAll(' ', '_'))}`;
@@ -20,7 +24,7 @@ export function countryRows(snapshot, date, query = '', language = 'all', saved 
   const before = snapshot.country_days.filter(d=>d.date<date).sort((a,b)=>b.date.localeCompare(a.date))[0];
   const ranks = new Map((before?.articles || []).map(a=>[articleKey(a),a.rank]));
   const q = query.trim().toLocaleLowerCase();
-  return (day?.articles || []).filter(a=>isLanguageProject(a.project)&&(language==='all'||a.project===language)&&a.title.toLocaleLowerCase().includes(q)&&(!saved||saved.has(articleKey(a))))
+  return (day?.articles || []).filter(a=>isCountryArticle(a)&&(language==='all'||a.project===language)&&a.title.toLocaleLowerCase().includes(q)&&(!saved||saved.has(articleKey(a))))
     .map(a=>({...a, previousRank:ranks.get(articleKey(a))??null, rankDate:before?.date??null}));
 }
 export function topicRows(snapshot, date, query='', group='all', sort='ratio', saved=null) {

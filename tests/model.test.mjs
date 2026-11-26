@@ -17,3 +17,16 @@ test('country display excludes utility projects without mutating saved source da
  assert.equal(isLanguageProject('simple.wikipedia'),true);assert.equal(isLanguageProject('zh-min-nan.wikipedia'),true);
  assert.equal(isLanguageProject('www.wikipedia'),false);assert.equal(isLanguageProject('thankyou.wikipedia'),false);
 });
+
+test('the Dutch homepage is excluded only from its own project without changing source ranks',()=>{
+ const articles=[
+  {title:'Hoofdpagina',project:'nl.wikipedia',rank:2,views_ceil:9999},
+  {title:'Canada',project:'en.wikipedia',rank:7,views_ceil:4100},
+  {title:'Hoofdpagina',project:'en.wikipedia',rank:11,views_ceil:1200},
+ ];
+ const source={country_days:[{date:'2026-11-25',articles}]},before=structuredClone(source);
+ const shown=countryRows(source,'2026-11-25');
+ assert.deepEqual(shown.map(r=>[r.title,r.rank,r.views_ceil]),[['Canada',7,4100],['Hoofdpagina',11,1200]]);
+ assert.deepEqual(source,before);
+ assert.deepEqual(countryRows(source,'2026-11-25','','nl.wikipedia'),[]);
+});

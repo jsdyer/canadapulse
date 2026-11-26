@@ -12,7 +12,7 @@
 - A growing historical archive, month/date selection, shareable date links, sparklines and CSV export. The recent collection window defaults to fourteen country dates and 28-day topic baselines; archived dates do not roll off.
 - Follow articles in browser storage, including custom lookups, and check their worldwide views through the selected reporting date.
 - Arbitrary Wikipedia article title/language lookup directly against Wikimedia. No API key or Worker handler is required.
-- Keyboard navigation, mobile layout and source links. Utility pages and non-language utility projects such as `thankyou.wikipedia` are filtered from the display and future collection, with the remaining original source ranks retained. Original first-observed archive files are preserved.
+- Keyboard navigation, mobile layout and source links. Known utility pages and non-language utility projects such as `thankyou.wikipedia` are filtered from the display and future collection, with the remaining original source ranks retained. Original first-observed archive files are preserved.
 
 The report date is the measured UTC date. `retrieved_at` is when the collector retrieved the data. Neither is a page-build date. Country values use Wikimedia's `views_ceil` field; a missing article is not zero. Each stored country date retains up to the configured `country_limit` language-article results after utility pages are filtered (150 by default), with original source ranks. Worldwide series use the `user` agent class and measure views, not unique people. Canadian topics are editorially selected and are not a complete classification of all Canadian subjects.
 
@@ -33,6 +33,8 @@ Edit `config/sources.json`. Add an article such as:
 ```
 
 The project must be a Wikipedia language project. A redirect or nonexistent title may have a different series; verify the intended article. Up to 100 topics, 2–31 country dates and 7–90 baseline days are supported. Counts and filters come from the published snapshot, not the starter list. Each archived date carries its topic list and coverage. Earlier dates retain removed topics and their original groups and values; new topics begin appearing on newly archived dates.
+
+Country-result presentation also uses the verified project/title exclusions in [`web/utility-pages.mjs`](web/utility-pages.mjs), including the Dutch `Hoofdpagina`. Add an exact title, its Wikipedia language project and a source link there, then rebuild. Matching normalizes spaces/underscores and Unicode composition without hiding the same title in a different language project. The display, language filter and CSV share the exclusions; original archive files, view upper bounds and source rank numbers are unchanged.
 
 Then run:
 
