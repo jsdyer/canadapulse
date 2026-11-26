@@ -17,6 +17,7 @@
   "access": "browser",
   "data_info": {
     "mode": "snapshot",
-    "detail": "Wikimedia daily Canadian readership rankings and worldwide user pageviews for configurable Canadian topics, with historical archives from 2021 and 2015 respectively and daily scheduled checks."
+    "detail": "Wikimedia daily Canadian readership rankings and worldwide user pageviews for configurable Canadian topics, with historical archives from 2021 and 2015 respectively and daily scheduled checks.",
+    "cadence": "Daily"
   }
 }
